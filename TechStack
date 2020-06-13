@@ -1,0 +1,16 @@
+Microsoft SQL Server (Merge Tables) 
+SPSS (Run Stats) 
+Python or R (Create Visualizations & Build Model)
+
+**For R we can download the packages shown below**:
+plyr:Tools for Splitting, Applying and Combining Dat
+dplyr:A Grammar of Data Manipulation
+RMySQL:Database Interface and 'MySQL' Driver for R
+RODBC:ODBC Database Access
+ggplot2:
+stringr:Simple, Consistent Wrappers for Common String Operations.
+markdown:Render Markdown with the C Library 'Sundown'
+rmarkdown:Dynamic Documents for R
+forecast:Forecasting Functions for Time Series and Linear Models
+reshape2:Flexibly Reshape Data: A Reboot of the Reshape Package
+sqldf:Manipulate R Data Frames Using SQL
