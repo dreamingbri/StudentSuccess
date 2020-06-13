@@ -1,5 +1,8 @@
-Source: https://data.ufl.edu/media/dataufledu/non-image-files/ODBC-Sample-Queries.sql
-
+#Source: https://data.ufl.edu/media/dataufledu/non-image-files/ODBC-Sample-Queries.sql
+#To use the SQL here with the tables they have access to,the WH in the tablenamewill need to be replaced 
+#with UF.  They will also need to prefix each tablenamewith the UFDL_PWCBA_DATA schema
+#there will be no public synonyms to reference.
+ 
 ---ODBC Sample Queries
 ---Last Updated 6/18
 ---https://data.ufl.edu/data-management/student-data/
