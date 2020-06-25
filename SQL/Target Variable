@@ -1,0 +1,311 @@
+WITH AUD  -- audit tables excluded from PWCBA schema, not anonymized
+
+,
+
+IND AS (SELECT
+
+    "EMPLID" EMPLID,  
+
+    SUM(CASE WHEN "CUR_GPA" <= 2.2 AND "ACADEMIC_LOAD" <> 'N' AND UNT_TAKEN_GPA<> 0 THEN 1 ELSE 0 END) AS "LOW_TERM_GPA_IND",       
+
+    SUM(CASE WHEN "ACADEMIC_LOAD" in ('P','H','L','T') THEN 1 ELSE 0 END) AS "PARTTIME_TERM_IND",
+
+    SUM(CASE WHEN "ACADEMIC_LOAD" = 'N' THEN 1 ELSE 0 END) AS "NOT_REG_TERM_IND",
+
+    SUM(CASE WHEN "ACADEMIC_LOAD" <> 'N' AND UNT_TAKEN_GPA=0 AND  UNT_PASSD_NOGPA=0   THEN 1 ELSE 0 END) AS "WITHDRWL_TERM_IND",
+
+    SUM(CASE WHEN "ACADEMIC_LOAD" = 'F' THEN 1 ELSE 0 END) AS "FULLTIME_TERM_IND",
+
+    SUM(CASE WHEN "UNT_PASSD_GPA" > 12 THEN 1 ELSE 0 END) AS "OVR_12HR_TERM_IND"
+
+FROM CS.UF_IPR_COHORTS CHT INNER JOIN CS.PS_STDNT_CAR_TERM CAR on CHT.UNIV_ROW_ID=CAR.EMPLID and CHT.STRM in ('2165','2168')
+
+  where CAR.STRM < (Select DISTINCT(TERM_CD) from CS.UF_D_TERM where  UF_D_TERM.UF_CURR_TERM_FLG = 'Y')
+
+        AND ACAD_CAREER='UGRD'
+
+GROUP BY EMPLID),       
+
+ 
+
+SPLAN AS (Select SP.EMPLID SPLAN_EMPLID,               
+
+                                  SP.ACAD_CAREER SPLAN_ACAD_CAREER,
+
+                                                   SP.ACAD_PLAN SPLAN_ACAD_PLAN,
+
+                                                   SP.ACAD_SUB_PLAN SPLAN_ACAD_SUB_PLAN
+
+FROM CS.PS_ACAD_SUBPLAN SP
+
+WHERE     SP.EFFDT = (SELECT MAX(D_ED.EFFDT) FROM CS.PS_ACAD_SUBPLAN D_ED WHERE SP.EMPLID = D_ED.EMPLID
+
+     AND SP.ACAD_CAREER = D_ED.ACAD_CAREER
+
+     AND SP.STDNT_CAR_NBR = D_ED.STDNT_CAR_NBR
+
+     AND D_ED.EFFDT <= SYSDATE)
+
+AND      SP.EFFSEQ = (SELECT MAX(D_ES.EFFSEQ) FROM CS.PS_ACAD_SUBPLAN D_ES WHERE SP.EMPLID = D_ES.EMPLID
+
+     AND SP.ACAD_CAREER = D_ES.ACAD_CAREER
+
+     AND SP.STDNT_CAR_NBR = D_ES.STDNT_CAR_NBR
+
+     AND SP.EFFDT = D_ES.EFFDT))
+
+ 
+
+ 
+
+ 
+
+Select MASTER_SQL.* from (SELECT
+
+         MDM.DISPLAY_NAME,
+
+         MDM.FIRST_NAME,
+
+         MDM.LAST_NAME,
+
+         MDM.BUSINESS_NAME,
+
+         MDM.BUSINESS_EMAIL,
+
+         A.EMPLID ,
+
+         A.INSTITUTION,
+
+         A.ACAD_CAREER ADMIT_ACAD_CAREER,
+
+         A.STDNT_CAR_NBR,
+
+         A.BASIS_ADMIT_CODE,
+
+         A.ADMIT_TERM,
+
+         CHT.UF_ONLN_INN_ACAD, --not supplied wit 2014 or 2016 cohort listing
+
+         A.ACAD_PROG ADMIT_ACAD_PROG,
+
+         A.ADM_APPL_NBR,
+
+         A.APPL_PROG_NBR,
+
+         A.BEGIN_DT,
+
+         A.END_DT,
+
+         A.INCLUDE_OFFER,
+
+         A.INCLUDE_IN_TSCRPT,
+
+         A.DESCR254 ADMIT_TYPE_DESCR,
+
+         B.ACAD_PROG,
+
+         B.PROG_STATUS,
+
+         B.DEGR_CHKOUT_STAT,
+
+         B.COMPLETION_TERM,
+
+         C.ACAD_PLAN,
+
+         SPLAN.SPLAN_ACAD_SUB_PLAN,
+
+         D.EXP_GRAD_TERM,
+
+         D.ACAD_PROG DEG_ACAD_PROG,
+
+         D.ACAD_PLAN DEG_ACAD_PLAN,
+
+         D.DEGREE,
+
+         D.ACTIVE_FLAG,
+
+         D.UF_DEPTLVL_APPRV_P,
+
+         D.UF_COLLVL_APPRV_P,
+
+         D.UF_COLLVL_FINAL_P,
+
+         D.UF_COLLVL_APPRV,
+
+         D.UF_COLLVL_FINAL,
+
+         D.UF_DGC_REVOKED,
+
+         E.UF_PRGM_HRS,
+
+         F.TOT_CUMULATIVE,
+
+         F.STRM MOST_RECENT_REG_TERM,
+
+         P.DESCR COLLEGE_DESCR,
+
+         P.ACAD_ORG,
+
+         P.EFFDT,
+
+         AUD.AUD_PLAN_STATUS,
+
+         AUD.CAREER_STATUS AUD_CAREER_STATUS,
+
+         AUD.AUD_acad_prog,
+
+         AUD.AUD_acad_plan,
+
+         AUD.AUD_acad_sub_plan,
+
+         IND.LOW_TERM_GPA_IND,
+
+         IND.PARTTIME_TERM_IND,
+
+         IND.NOT_REG_TERM_IND,
+
+         IND.WITHDRWL_TERM_IND,
+
+         IND.FULLTIME_TERM_IND,
+
+         IND.OVR_12HR_TERM_IND,      
+
+         (IND.LOW_TERM_GPA_IND + IND.PARTTIME_TERM_IND + IND.NOT_REG_TERM_IND + IND.WITHDRWL_TERM_IND) AS INDICATOR_TOTAL ,
+
+         CASE WHEN (D.UF_COLLVL_APPRV='Y' or B.DEGR_CHKOUT_STAT='AW') THEN (0)
+
+                   ELSE (IND.LOW_TERM_GPA_IND + IND.PARTTIME_TERM_IND + IND.NOT_REG_TERM_IND + IND.WITHDRWL_TERM_IND)
+
+         END HAS_INDICATOR_FLAG,
+
+ 
+
+         RANK () OVER (PARTITION BY B.EMPLID ORDER BY
+
+                                                                                                CASE      WHEN B.ACAD_CAREER = F.ACAD_CAREER AND B.STDNT_CAR_NBR=F.STDNT_CAR_NBR THEN 1
+
+                                                                                                                                                ELSE 9
+
+                                                                                                END,
+
+                                                                                                F.STDNT_CAR_NBR,C.PLAN_SEQUENCE, C.ACAD_PLAN) AS PRIMARY_PLAN_ORDER,
+
+ 
+
+CASE
+
+                                                                                                WHEN ((D.UF_COLLVL_APPRV ='Y' AND D.UF_DGC_REVOKED<> 'Y' ) or B.DEGR_CHKOUT_STAT='AW') THEN ('1')
+
+                                                                                                WHEN (D.UF_COLLVL_FINAL='Y' AND D.UF_COLLVL_APPRV='N' AND D.EXP_GRAD_TERM='2201') THEN ('2') 
+
+                                                                                                WHEN (B.PROG_STATUS = 'DM') THEN ('No Message to Be Sent')
+
+                                                                                                WHEN (B.PROG_STATUS = 'DC') THEN ('7')
+
+                                                                                                WHEN ((D.UF_DGC_REVOKED = 'Y' OR D.UF_COLLVL_APPRV_P='N') AND D.EXP_GRAD_TERM='2201') THEN ('1b')
+
+                                                                                                WHEN (D.ACTIVE_FLAG='Y' AND D.EXP_GRAD_TERM='2201' AND ( AUD.AUD_PLAN_STATUS='FAIL' OR AUD.CAREER_STATUS='FAIL')) THEN ('1b')
+
+                                                                                                WHEN (D.UF_DGC_REVOKED = 'N' AND D.UF_COLLVL_APPRV_P='Y'  AND D.EXP_GRAD_TERM='2201') THEN ('1a')
+
+                                                                                                WHEN (D.UF_DGC_REVOKED  = 'N' AND D.ACTIVE_FLAG='Y' AND D.EXP_GRAD_TERM='2201') THEN ('1a')
+
+                                                                                                WHEN (B.DEGR_CHKOUT_STAT in ('EG','WD') AND AUD.AUD_PLAN_STATUS<>'FAIL' AND AUD.CAREER_STATUS<>'FAIL' ) THEN ('3') --EG-Eligible for Graduation, DN-Denied, WD-Withdran   removed DN                                      
+
+                                                                                                WHEN (E.UF_PRGM_HRS>=125) THEN ('4')  --2014 and 2015 we need to remove this bucket  
+
+                                                                                                WHEN ((IND.LOW_TERM_GPA_IND + IND.PARTTIME_TERM_IND + IND.NOT_REG_TERM_IND + IND.WITHDRWL_TERM_IND)>0) THEN ('5')             
+
+         ELSE ('6')
+
+         END STUDENT_STATUS
+
+ 
+
+ 
+
+FROM CS.UF_IPR_COHORTS CHT INNER JOIN  CS.UF_D_MDM_PERSON MDM ON CHT.UNIV_ROW_ID=MDM.UFID and CHT.STRM in ('2165','2168')
+
+INNER JOIN CS.PS_ADM_BASIS_ADMIT A ON CHT.UNIV_ROW_ID=A.EMPLID AND (STRM=ADMIT_TERM or STRM = ' ')  AND A.ADMIT_TERM BETWEEN '2165' AND '2168' AND A.BASIS_ADMIT_CODE = 'B'
+
+INNER JOIN CS.PS_ACAD_PROG B ON A.EMPLID = B.EMPLID AND A.INSTITUTION = B.INSTITUTION
+
+INNER JOIN CS.PS_ACAD_PLAN C ON B.EMPLID = C.EMPLID AND B.ACAD_CAREER = C.ACAD_CAREER AND B.STDNT_CAR_NBR = C.STDNT_CAR_NBR AND B.EFFSEQ = C.EFFSEQ
+
+LEFT OUTER JOIN CS.ps_uf_dgc_detail D ON C.EMPLID = D.EMPLID AND C.ACAD_CAREER = D.ACAD_CAREER AND C.STDNT_CAR_NBR = D.STDNT_CAR_NBR AND C.ACAD_PLAN = D.ACAD_PLAN AND D.UF_DGC_CRED_TYPE='D' AND D.DEGREE<>'AA' AND D.EXP_GRAD_TERM='2201'
+
+LEFT OUTER JOIN IND ON IND.emplid=CHT.UNIV_ROW_ID
+
+LEFT OUTER JOIN SPLAN ON SPLAN.SPLAN_ACAD_PLAN = C.ACAD_PLAN AND SPLAN.SPLAN_ACAD_CAREER = C.ACAD_CAREER AND SPLAN.SPLAN_EMPLID=C.EMPLID
+
+LEFT OUTER JOIN AUD ON AUD.emplid=C.EMPLID AND AUD.AUD_acad_career=C.acad_career AND AUD.AUD_acad_plan=C.ACAD_Plan
+
+INNER JOIN CS.PS_UF_PLN_EXCS_HRS E ON C.ACAD_PLAN = E.ACAD_PLAN
+
+INNER JOIN CS.PS_STDNT_CAR_TERM F ON A.EMPLID = F.EMPLID AND A.INSTITUTION = F.INSTITUTION AND A.ACAD_CAREER = F.ACAD_CAREER
+
+INNER JOIN CS.PS_ACAD_PROG_TBL P ON B.INSTITUTION = P.INSTITUTION AND B.ACAD_CAREER = P.ACAD_CAREER AND B.ACAD_PROG = P.ACAD_PROG AND P.EFF_STATUS='A'
+
+ 
+
+ 
+
+WHERE
+
+    ((AUD.AUD_acad_sub_plan=SPLAN.SPLAN_acad_sub_plan ) OR SPLAN.SPLAN_acad_sub_plan IS NULL OR AUD.AUD_acad_sub_plan IS NULL OR AUD.AUD_acad_sub_plan=' ')
+
+ 
+
+AND      B.EFFDT = (SELECT MAX(B_ED.EFFDT) FROM CS.PS_ACAD_PROG B_ED WHERE B.EMPLID = B_ED.EMPLID
+
+     AND B.ACAD_CAREER = B_ED.ACAD_CAREER
+
+     AND B.STDNT_CAR_NBR = B_ED.STDNT_CAR_NBR
+
+     AND B_ED.EFFDT <= SYSDATE)
+
+AND      B.EFFSEQ = (SELECT MAX(B_ES.EFFSEQ) FROM CS.PS_ACAD_PROG B_ES WHERE B.EMPLID = B_ES.EMPLID
+
+     AND B.ACAD_CAREER = B_ES.ACAD_CAREER
+
+     AND B.STDNT_CAR_NBR = B_ES.STDNT_CAR_NBR
+
+     AND B.EFFDT = B_ES.EFFDT)
+
+AND      C.EFFDT = (SELECT MAX(C_ED.EFFDT) FROM CS.PS_ACAD_PLAN C_ED WHERE C.EMPLID = C_ED.EMPLID
+
+     AND C.ACAD_CAREER = C_ED.ACAD_CAREER
+
+     AND C.STDNT_CAR_NBR = C_ED.STDNT_CAR_NBR
+
+     AND C_ED.EFFDT <= SYSDATE)
+
+AND      C.EFFSEQ = (SELECT MAX(C_ES.EFFSEQ) FROM CS.PS_ACAD_PLAN C_ES WHERE C.EMPLID = C_ES.EMPLID
+
+     AND C.ACAD_CAREER = C_ES.ACAD_CAREER
+
+     AND C.STDNT_CAR_NBR = C_ES.STDNT_CAR_NBR
+
+     AND C.EFFDT = C_ES.EFFDT)
+
+AND      E.EFFDT = (SELECT MAX(E_ED.EFFDT) FROM CS.PS_UF_PLN_EXCS_HRS E_ED WHERE E.INSTITUTION = E_ED.INSTITUTION
+
+     AND E.ACAD_PLAN = E_ED.ACAD_PLAN
+
+     AND E_ED.EFFDT <= SYSDATE)
+
+AND      F.STRM = (SELECT MAX( G.STRM) FROM CS.PS_STDNT_CAR_TERM G WHERE G.EMPLID = F.EMPLID
+
+     AND G.INSTITUTION = F.INSTITUTION
+
+     AND A.ACAD_CAREER = G.ACAD_CAREER)
+
+AND      P.EFFDT = (SELECT MAX(E_ED.EFFDT) FROM CS.PS_ACAD_PROG_TBL E_ED WHERE P.INSTITUTION = E_ED.INSTITUTION
+
+     AND P.ACAD_PROG = E_ED.ACAD_PROG
+
+     AND E_ED.EFFDT <= SYSDATE)
+
+) MASTER_SQL  where MASTER_SQL.PRIMARY_PLAN_ORDER=1;
+
+ 
